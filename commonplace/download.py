@@ -65,6 +65,21 @@ def fetch_metadata(url):
     return info
 
 
+def download_thumbnail(url, bid):
+    """Recupere uniquement la miniature (pas la video). Renvoie thumb_rel ou None."""
+    out_tmpl = str(config.MEDIA / f"{bid}.%(ext)s")
+    args = [
+        config.YTDLP_BIN, "--skip-download", "--write-thumbnail",
+        "--convert-thumbnails", "jpg", "--no-warnings",
+        "-o", out_tmpl, *_common_opts(), url,
+    ]
+    _run(args, timeout=120)
+    for f in config.MEDIA.glob(f"{bid}.*"):
+        if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
+            return f.relative_to(config.DATA).as_posix()
+    return None
+
+
 def download_video(url, bid):
     """Telecharge la video. Renvoie (video_rel, thumb_rel) ou (None, None)."""
     out_tmpl = str(config.MEDIA / f"{bid}.%(ext)s")
@@ -119,6 +134,23 @@ def process_new(conn, verbose=True):
             # tweet texte : pas de video, mais on garde auteur + contenu
             fields.update(author=tweet.get("author") or b["author"],
                           caption=tweet.get("text") or b["caption"])
+
+        # plateformes "lien + miniature" (ex: youtube) : on ne telecharge pas la video
+        if b["platform"] in config.THUMBNAIL_ONLY:
+            thumb_rel = download_thumbnail(url, bid)
+            if info or thumb_rel:
+                fields.update(thumb_path=thumb_rel, video_path=None,
+                              status="downloaded", error=None)
+                ok += 1
+                if verbose:
+                    print(f"    ◐ lien+miniature pour #{bid}")
+            else:
+                fields.update(status="error",
+                              error="metadonnees indisponibles (lien prive/mort ?)")
+                err += 1
+            db.update_bookmark(conn, bid, **fields)
+            continue
+
         video_rel, thumb_rel = download_video(url, bid)
         if video_rel:
             fields.update(video_path=video_rel, thumb_path=thumb_rel,

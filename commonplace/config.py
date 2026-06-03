@@ -47,6 +47,9 @@ YTDLP_BIN = get("YTDLP_BIN", "yt-dlp")
 MAX_PER_RUN = int(get("MAX_PER_RUN", "25"))
 # cookies optionnels pour Instagram/TikTok (export navigateur, format Netscape)
 COOKIES_FILE = get("COOKIES_FILE", "")
+# plateformes ou on ne garde QUE le lien + la miniature (pas la video entiere).
+# par defaut youtube (videos lourdes, qui ne disparaissent quasi jamais).
+THUMBNAIL_ONLY = {p.strip() for p in get("THUMBNAIL_ONLY_PLATFORMS", "youtube").split(",") if p.strip()}
 
 
 def ensure_dirs():

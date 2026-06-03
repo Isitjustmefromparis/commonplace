@@ -60,7 +60,10 @@ def _card(b, slug_by_bid):
         poster = f'poster="{html.escape(thumb)}"' if thumb else ""
         media = f'<div class="media"><video controls preload="none" {poster} src="{html.escape(video)}"></video></div>'
     elif thumb:
-        media = f'<div class="media"><img loading="lazy" src="{html.escape(thumb)}" alt=""></div>'
+        # pas de video locale (youtube / tweet) : miniature cliquable vers l'original
+        media = (f'<a class="media media-link" href="{url}" target="_blank" rel="noopener">'
+                 f'<img loading="lazy" src="{html.escape(thumb)}" alt="">'
+                 f'<span class="play">▶</span></a>')
     else:
         media = ""
 
@@ -200,8 +203,12 @@ main{padding:1.6rem 1.8rem 4rem;min-width:0}
 .ttl{font-family:var(--heading);font-weight:700;font-size:1rem;line-height:1.25;
   margin:.4rem .95rem 0;color:var(--green-d)}
 .cap{margin:.5rem .95rem .2rem;font-size:.9rem;color:var(--green-d);opacity:.9}
-.media{margin-top:.6rem;background:var(--green-d);line-height:0}
+.media{margin-top:.6rem;background:var(--green-d);line-height:0;position:relative;display:block}
 .media video,.media img{width:100%;height:auto;display:block;max-height:560px;object-fit:cover}
+.media-link .play{position:absolute;inset:0;margin:auto;width:54px;height:54px;
+  display:flex;align-items:center;justify-content:center;border-radius:99px;
+  background:rgba(33,59,28,.75);color:#fff;font-size:1.3rem;padding-left:4px}
+.media-link:hover .play{background:var(--orange)}
 .foot{display:flex;align-items:center;justify-content:space-between;padding:.6rem .95rem .85rem}
 .date{font-size:.78rem;color:var(--muted)}
 .src{font-size:.8rem;font-weight:700;color:var(--green)}
