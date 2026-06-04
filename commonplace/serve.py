@@ -34,13 +34,14 @@ class RangeHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urllib.parse.urlsplit(self.path)
+        length = int(self.headers.get("Content-Length", 0) or 0)
+        body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
+        params = urllib.parse.parse_qs(body)
+        params.update(urllib.parse.parse_qs(parsed.query))
         if parsed.path == "/add":
-            length = int(self.headers.get("Content-Length", 0) or 0)
-            body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
-            params = urllib.parse.parse_qs(body)
-            # fusionne aussi les eventuels params d'URL
-            params.update(urllib.parse.parse_qs(parsed.query))
             self._handle_add(params)
+        elif parsed.path == "/note":
+            self._handle_note(params)
         else:
             self.send_error(404)
 
@@ -49,8 +50,25 @@ class RangeHandler(SimpleHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
+
+    def _handle_note(self, params):
+        bid = (params.get("id") or [""])[0]
+        text = (params.get("text") or [""])[0]
+        key = (params.get("key") or [""])[0]
+        add_key = config.get("ADD_KEY", "")
+        if add_key and key != add_key:
+            self._text(403, "cle invalide")
+            return
+        if not bid.isdigit():
+            self._text(400, "id invalide")
+            return
+        conn = db.connect()
+        db.set_note(conn, int(bid), text.strip() or None)
+        conn.close()
+        self._text(200, "note enregistree")
 
     def _handle_add(self, params):
         """Ajoute un lien envoye par le raccourci iPhone (ou tout client HTTP)."""

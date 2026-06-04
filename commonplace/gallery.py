@@ -69,6 +69,7 @@ def _card(b, slug_by_bid):
 
     cap_html = f'<p class="cap">{cap}</p>' if cap else ""
     title_html = f'<p class="ttl">{title}</p>' if title and title != author else ""
+    note_val = html.escape(b["note"] or "") if "note" in b.keys() else ""
 
     return f"""
   <article class="card" data-lists="{lists}" data-platform="{plat}" data-search="{blob}">
@@ -81,6 +82,7 @@ def _card(b, slug_by_bid):
     {cap_html}
     {media}
     <div class="foot"><span class="date">{date}</span><a class="src" href="{url}" target="_blank" rel="noopener">original ↗</a></div>
+    <textarea class="note" data-id="{b['id']}" rows="1" placeholder="Ajouter une note, une idée…">{note_val}</textarea>
   </article>"""
 
 
@@ -213,6 +215,12 @@ main{padding:1.6rem 1.8rem 4rem;min-width:0}
 .date{font-size:.78rem;color:var(--muted)}
 .src{font-size:.8rem;font-weight:700;color:var(--green)}
 .src:hover{color:var(--orange)}
+.note{display:block;width:auto;margin:0 .95rem 1rem;padding:.5rem .6rem;border:1px dashed var(--line);
+  border-radius:10px;background:var(--cream);font-family:var(--body);font-size:.85rem;color:var(--green-d);
+  resize:none;outline:none;line-height:1.4;overflow:hidden}
+.note:focus{border-style:solid;border-color:var(--orange);background:#fff}
+.note.saved{border-color:var(--green);border-style:solid}
+.note::placeholder{color:var(--muted);opacity:.75}
 a{text-decoration:none;color:inherit}
 .empty{color:var(--muted);font-size:1.05rem;margin-top:3rem}
 .hidden{display:none!important}
@@ -264,6 +272,20 @@ document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{
 }));
 const q=document.getElementById("q");
 q.addEventListener("input",()=>{state.q=q.value;apply();});
+
+// --- notes : sauvegarde auto + champ qui grandit ---
+function grow(t){t.style.height="auto";t.style.height=Math.min(t.scrollHeight,160)+"px";}
+const NBASE = location.protocol==="file:" ? "http://100.109.120.86:8787" : "";
+document.querySelectorAll("textarea.note").forEach(t=>{
+  grow(t);
+  t.addEventListener("input",()=>grow(t));
+  t.addEventListener("change",()=>{
+    const b=new URLSearchParams();b.set("id",t.dataset.id);b.set("text",t.value);
+    fetch(NBASE+"/note",{method:"POST",body:b})
+      .then(r=>{if(r.ok){t.classList.add("saved");setTimeout(()=>t.classList.remove("saved"),1000);}})
+      .catch(()=>{});
+  });
+});
 </script>
 </body>
 </html>"""

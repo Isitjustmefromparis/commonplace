@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     downloaded_at TEXT,
     classified_at TEXT,
     status       TEXT DEFAULT 'new',  -- new|downloaded|metadata_only|error
-    error        TEXT
+    error        TEXT,
+    note         TEXT                 -- commentaire/idee ajoute par Alysse
 );
 
 CREATE TABLE IF NOT EXISTS lists (
@@ -56,6 +57,11 @@ def connect():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
+    # migration : ajoute la colonne note aux bases existantes
+    cols = [r[1] for r in conn.execute("PRAGMA table_info(bookmarks)").fetchall()]
+    if "note" not in cols:
+        conn.execute("ALTER TABLE bookmarks ADD COLUMN note TEXT")
+        conn.commit()
     return conn
 
 
@@ -121,6 +127,11 @@ def unclassified(conn, limit=None):
     if limit:
         q += f" LIMIT {int(limit)}"
     return conn.execute(q).fetchall()
+
+
+def set_note(conn, bid, note):
+    conn.execute("UPDATE bookmarks SET note=? WHERE id=?", (note, bid))
+    conn.commit()
 
 
 def update_bookmark(conn, bid, **fields):
