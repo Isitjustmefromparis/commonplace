@@ -158,6 +158,52 @@ def link(conn, bid, list_id):
     conn.commit()
 
 
+def rename_list(conn, list_id, name, description=None):
+    if description is None:
+        conn.execute("UPDATE lists SET name=?, slug=? WHERE id=?",
+                     (name, slugify(name), list_id))
+    else:
+        conn.execute("UPDATE lists SET name=?, slug=?, description=? WHERE id=?",
+                     (name, slugify(name), description, list_id))
+    conn.commit()
+
+
+def merge_lists(conn, source_ids, target_id):
+    """Deplace tous les liens des listes source vers la cible, puis supprime les sources."""
+    for sid in source_ids:
+        if sid == target_id:
+            continue
+        conn.execute(
+            "INSERT OR IGNORE INTO bookmark_lists(bookmark_id,list_id) "
+            "SELECT bookmark_id, ? FROM bookmark_lists WHERE list_id=?",
+            (target_id, sid),
+        )
+        conn.execute("DELETE FROM bookmark_lists WHERE list_id=?", (sid,))
+        conn.execute("DELETE FROM lists WHERE id=?", (sid,))
+    conn.commit()
+
+
+def unlink(conn, bid, list_id):
+    conn.execute("DELETE FROM bookmark_lists WHERE bookmark_id=? AND list_id=?",
+                 (bid, list_id))
+    conn.commit()
+
+
+def delete_list_if_empty(conn, list_id):
+    n = conn.execute("SELECT COUNT(*) c FROM bookmark_lists WHERE list_id=?",
+                     (list_id,)).fetchone()["c"]
+    if n == 0:
+        conn.execute("DELETE FROM lists WHERE id=?", (list_id,))
+        conn.commit()
+        return True
+    return False
+
+
+def list_count(conn, list_id):
+    return conn.execute("SELECT COUNT(*) c FROM bookmark_lists WHERE list_id=?",
+                        (list_id,)).fetchone()["c"]
+
+
 def bookmarks_in_list(conn, list_id):
     return conn.execute(
         "SELECT b.* FROM bookmarks b "

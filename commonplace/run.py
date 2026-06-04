@@ -13,7 +13,8 @@ Usage :
     python3 -m commonplace.run add <url>  # ajoute un lien a la main (test)
 """
 import sys
-from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery
+from datetime import datetime, timezone, timedelta
+from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery, reorg
 
 
 def step_ingest(conn):
@@ -49,11 +50,30 @@ def step_gallery(conn):
     return out
 
 
+def step_reorg(conn):
+    m, s = reorg.run_reorg(conn)
+    print(f"Reorganisation : {m} fusion(s), {s} decoupe(s)")
+    return m, s
+
+
+def _reorg_due(conn):
+    """Vrai si la derniere reorg date de plus de 24h (ou jamais)."""
+    last = db.meta_get(conn, "last_reorg")
+    if not last:
+        return True
+    try:
+        return datetime.now(timezone.utc) - datetime.fromisoformat(last) > timedelta(hours=24)
+    except ValueError:
+        return True
+
+
 def full(conn):
     print("=== CommonPlace ===")
     step_ingest(conn)
     step_download(conn)
     step_classify(conn)
+    if _reorg_due(conn):
+        step_reorg(conn)
     step_gallery(conn)
     print("Termine. Ouvre la galerie dans ton navigateur.")
 
@@ -71,6 +91,9 @@ def main():
     elif arg == "classify":
         step_classify(conn)
     elif arg == "gallery":
+        step_gallery(conn)
+    elif arg == "reorg":
+        step_reorg(conn)
         step_gallery(conn)
     elif arg == "whoami":
         for cid, name in telegram_ingest.whoami(conn).items():
