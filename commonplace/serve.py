@@ -8,15 +8,20 @@ Lancer : python3 -m commonplace.serve   (port 8787 par defaut)
 """
 import os
 import re
+import urllib.parse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from . import config
+from . import config, db
 
 
 class RangeHandler(SimpleHTTPRequestHandler):
     """SimpleHTTPRequestHandler + support des requetes Range (lecture video iOS)."""
 
     def do_GET(self):
+        parsed = urllib.parse.urlsplit(self.path)
+        if parsed.path == "/add":
+            self._handle_add(urllib.parse.parse_qs(parsed.query))
+            return
         if self.path in ("", "/"):
             self.send_response(302)
             self.send_header("Location", "/gallery/index.html")
@@ -26,6 +31,42 @@ class RangeHandler(SimpleHTTPRequestHandler):
             self._serve_range()
         else:
             super().do_GET()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlsplit(self.path)
+        if parsed.path == "/add":
+            length = int(self.headers.get("Content-Length", 0) or 0)
+            body = self.rfile.read(length).decode("utf-8", "ignore") if length else ""
+            params = urllib.parse.parse_qs(body)
+            # fusionne aussi les eventuels params d'URL
+            params.update(urllib.parse.parse_qs(parsed.query))
+            self._handle_add(params)
+        else:
+            self.send_error(404)
+
+    def _text(self, code, msg):
+        data = msg.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _handle_add(self, params):
+        """Ajoute un lien envoye par le raccourci iPhone (ou tout client HTTP)."""
+        url = (params.get("url") or [""])[0].strip()
+        key = (params.get("key") or [""])[0]
+        add_key = config.get("ADD_KEY", "")
+        if add_key and key != add_key:
+            self._text(403, "cle invalide")
+            return
+        if not url.startswith("http"):
+            self._text(400, "pas d'URL valide")
+            return
+        conn = db.connect()
+        bid = db.add_bookmark(conn, url, source="shortcut")
+        conn.close()
+        self._text(200, "Ajoute a CommonPlace" if bid else "deja present")
 
     def _serve_range(self):
         path = self.translate_path(self.path)

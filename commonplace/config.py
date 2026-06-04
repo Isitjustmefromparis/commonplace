@@ -50,6 +50,9 @@ COOKIES_FILE = get("COOKIES_FILE", "")
 # plateformes ou on ne garde QUE le lien + la miniature (pas la video entiere).
 # par defaut youtube (videos lourdes, qui ne disparaissent quasi jamais).
 THUMBNAIL_ONLY = {p.strip() for p in get("THUMBNAIL_ONLY_PLATFORMS", "youtube").split(",") if p.strip()}
+# cle optionnelle pour proteger l'endpoint /add du serveur (raccourci iPhone).
+# vide = pas de protection (ok sur reseau prive/Tailscale).
+ADD_KEY = get("ADD_KEY", "")
 
 
 def ensure_dirs():
