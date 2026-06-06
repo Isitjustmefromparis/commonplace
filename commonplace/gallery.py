@@ -184,6 +184,16 @@ main{padding:1.6rem 1.8rem 4rem;min-width:0}
 .search input{width:100%;max-width:480px;padding:.7rem 1.1rem;border:1px solid var(--line);
   border-radius:99px;background:var(--paper);font-family:var(--body);font-size:.95rem;color:var(--green-d);outline:none}
 .search input:focus{border-color:var(--orange)}
+.askbar{display:flex;gap:.6rem;margin:0 0 1rem;max-width:760px}
+.askbar input{flex:1;padding:.7rem 1.1rem;border:1px solid var(--line);border-radius:99px;
+  background:var(--paper);font-family:var(--body);font-size:.95rem;color:var(--green-d);outline:none}
+.askbar input:focus{border-color:var(--orange)}
+.askbar button{flex:none;border:0;background:var(--green);color:var(--cream);font-family:var(--body);
+  font-weight:700;font-size:.9rem;padding:.7rem 1.3rem;border-radius:99px;cursor:pointer}
+.askbar button:hover{background:var(--orange)}
+.askbar button:disabled{opacity:.5;cursor:wait}
+.answer{max-width:760px;background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--orange);
+  border-radius:12px;padding:1rem 1.2rem;margin:0 0 1.4rem;white-space:pre-wrap;font-size:.92rem;line-height:1.55;box-shadow:var(--shadow)}
 
 /* Masonry */
 .masonry{column-count:4;column-gap:1.2rem}
@@ -239,6 +249,11 @@ a{text-decoration:none;color:inherit}
     <h1 id="title">Tout</h1>
     <div class="search"><input id="q" type="search" placeholder="Rechercher (titre, auteur, mot-cle)…"></div>
   </div>
+  <div class="askbar">
+    <input id="ask" type="text" placeholder="Demande à ton carnet… (ex : qu'est-ce que j'ai sauvé pour Myriam ?)">
+    <button id="askbtn">Demander</button>
+  </div>
+  <div id="answer" class="answer hidden"></div>
   <div class="masonry" id="grid">
 {{CARDS}}
   </div>
@@ -273,9 +288,26 @@ document.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",()=>{
 const q=document.getElementById("q");
 q.addEventListener("input",()=>{state.q=q.value;apply();});
 
+// base des appels API : relatif si servi, absolu si ouvert en file://
+const NBASE = location.protocol==="file:" ? "http://100.109.120.86:8787" : "";
+
+// --- demande à ton carnet ---
+const askIn=document.getElementById("ask"), askBtn=document.getElementById("askbtn"), ansBox=document.getElementById("answer");
+async function doAsk(){
+  const q=askIn.value.trim(); if(!q)return;
+  ansBox.classList.remove("hidden"); ansBox.textContent="Je cherche dans ton carnet…"; askBtn.disabled=true;
+  try{
+    const b=new URLSearchParams(); b.set("q",q);
+    const r=await fetch(NBASE+"/ask",{method:"POST",body:b});
+    ansBox.textContent=await r.text();
+  }catch(e){ ansBox.textContent="Oups, le carnet n'a pas répondu (serveur joignable ?)."; }
+  askBtn.disabled=false;
+}
+askBtn&&askBtn.addEventListener("click",doAsk);
+askIn&&askIn.addEventListener("keydown",e=>{if(e.key==="Enter")doAsk();});
+
 // --- notes : sauvegarde auto + champ qui grandit ---
 function grow(t){t.style.height="auto";t.style.height=Math.min(t.scrollHeight,160)+"px";}
-const NBASE = location.protocol==="file:" ? "http://100.109.120.86:8787" : "";
 document.querySelectorAll("textarea.note").forEach(t=>{
   grow(t);
   t.addEventListener("input",()=>grow(t));

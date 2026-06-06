@@ -11,7 +11,7 @@ import re
 import urllib.parse
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from . import config, db
+from . import config, db, ask
 
 
 class RangeHandler(SimpleHTTPRequestHandler):
@@ -21,6 +21,9 @@ class RangeHandler(SimpleHTTPRequestHandler):
         parsed = urllib.parse.urlsplit(self.path)
         if parsed.path == "/add":
             self._handle_add(urllib.parse.parse_qs(parsed.query))
+            return
+        if parsed.path == "/ask":
+            self._handle_ask(urllib.parse.parse_qs(parsed.query))
             return
         if self.path in ("", "/"):
             self.send_response(302)
@@ -42,6 +45,8 @@ class RangeHandler(SimpleHTTPRequestHandler):
             self._handle_add(params)
         elif parsed.path == "/note":
             self._handle_note(params)
+        elif parsed.path == "/ask":
+            self._handle_ask(params)
         else:
             self.send_error(404)
 
@@ -53,6 +58,16 @@ class RangeHandler(SimpleHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(data)
+
+    def _handle_ask(self, params):
+        q = (params.get("q") or params.get("question") or [""])[0].strip()
+        if not q:
+            self._text(400, "pose une question avec ?q=...")
+            return
+        try:
+            self._text(200, ask.answer(q))
+        except Exception as e:
+            self._text(500, f"erreur : {e}")
 
     def _handle_note(self, params):
         bid = (params.get("id") or [""])[0]

@@ -53,6 +53,9 @@ THUMBNAIL_ONLY = {p.strip() for p in get("THUMBNAIL_ONLY_PLATFORMS", "youtube").
 # cle optionnelle pour proteger l'endpoint /add du serveur (raccourci iPhone).
 # vide = pas de protection (ok sur reseau prive/Tailscale).
 ADD_KEY = get("ADD_KEY", "")
+# digestion nocturne : dossier cible des fiches md (ex: ~/wiki/resources/commonplace).
+# vide = data/digest/ en local. WIKI_DIGEST_GIT=1 pour committer/pousser apres.
+# (lus a la volee dans digest.py via config.get pour rester dynamiques)
 
 
 def ensure_dirs():

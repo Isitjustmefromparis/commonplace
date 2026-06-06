@@ -14,7 +14,7 @@ Usage :
 """
 import sys
 from datetime import datetime, timezone, timedelta
-from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery, reorg
+from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery, reorg, ask, digest
 
 
 def step_ingest(conn):
@@ -95,6 +95,15 @@ def main():
     elif arg == "reorg":
         step_reorg(conn)
         step_gallery(conn)
+    elif arg == "ask":
+        question = " ".join(sys.argv[2:]).strip()
+        if not question:
+            print('Usage : python3 -m commonplace.run ask "ta question"')
+        else:
+            print(ask.answer(question, conn))
+    elif arg == "digest":
+        n = digest.digest(conn)
+        print(f"Digestion : {n} fiche(s) ecrite(s)")
     elif arg == "whoami":
         for cid, name in telegram_ingest.whoami(conn).items():
             print(f"chat_id={cid}  ({name})")
