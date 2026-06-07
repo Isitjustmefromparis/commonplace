@@ -35,6 +35,9 @@ def _corpus(conn, limit=500):
         lst = ", ".join(lists_by_bid.get(b["id"], []))
         line = (f"[{b['id']}] {b['platform']} | {b['author'] or '?'} | "
                 f"listes: {lst or '-'} | {b['title'] or ''} | {cap} | {b['url']}")
+        ent = b["entities"] if "entities" in b.keys() else None
+        if ent:
+            line += f" | INFOS: {ent}"
         if note:
             line += f" | NOTE: {note}"
         lines.append(line)

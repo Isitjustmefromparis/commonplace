@@ -14,7 +14,7 @@ Usage :
 """
 import sys
 from datetime import datetime, timezone, timedelta
-from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery, reorg, ask, digest
+from . import config, db, telegram_ingest, youtube_ingest, download, classify, gallery, reorg, ask, digest, enrich, sync_saved
 
 
 def step_ingest(conn):
@@ -50,6 +50,12 @@ def step_gallery(conn):
     return out
 
 
+def step_enrich(conn):
+    n = enrich.enrich(conn)
+    print(f"Enrichissement : {n} field note(s)")
+    return n
+
+
 def step_reorg(conn):
     m, s = reorg.run_reorg(conn)
     print(f"Reorganisation : {m} fusion(s), {s} decoupe(s)")
@@ -72,6 +78,7 @@ def full(conn):
     step_ingest(conn)
     step_download(conn)
     step_classify(conn)
+    step_enrich(conn)
     if _reorg_due(conn):
         step_reorg(conn)
     step_gallery(conn)
@@ -104,6 +111,11 @@ def main():
     elif arg == "digest":
         n = digest.digest(conn)
         print(f"Digestion : {n} fiche(s) ecrite(s)")
+    elif arg == "enrich":
+        step_enrich(conn)
+    elif arg in ("sync-saved", "sync_saved"):
+        n = sync_saved.sync_saved(conn)
+        print(f"Insta enregistres : {n} nouveau(x) lien(s) ajoute(s)")
     elif arg == "whoami":
         for cid, name in telegram_ingest.whoami(conn).items():
             print(f"chat_id={cid}  ({name})")

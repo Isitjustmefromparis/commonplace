@@ -21,7 +21,9 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     classified_at TEXT,
     status       TEXT DEFAULT 'new',  -- new|downloaded|metadata_only|error
     error        TEXT,
-    note         TEXT                 -- commentaire/idee ajoute par Alysse
+    note         TEXT,                -- commentaire/idee ajoute par Alysse
+    kind         TEXT,                -- field note : shopping|lieu|livre|recette|activite|idee|autre
+    entities     TEXT                 -- field note : JSON {marques, produits, lieux, livres, personnes, resume}
 );
 
 CREATE TABLE IF NOT EXISTS lists (
@@ -59,9 +61,10 @@ def connect():
     conn.executescript(SCHEMA)
     # migration : ajoute la colonne note aux bases existantes
     cols = [r[1] for r in conn.execute("PRAGMA table_info(bookmarks)").fetchall()]
-    if "note" not in cols:
-        conn.execute("ALTER TABLE bookmarks ADD COLUMN note TEXT")
-        conn.commit()
+    for col in ("note", "kind", "entities"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE bookmarks ADD COLUMN {col} TEXT")
+    conn.commit()
     return conn
 
 

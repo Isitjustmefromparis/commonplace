@@ -7,6 +7,7 @@ la legende, la note d'Alysse et le lien. Plus une fiche index.
 Cible : config.WIKI_DIGEST_DIR (ex: ~/wiki/resources/commonplace) si defini,
 sinon data/digest/. Optionnellement, commit+push git si WIKI_DIGEST_GIT=1.
 """
+import json
 import subprocess
 from pathlib import Path
 from . import config, db
@@ -29,6 +30,19 @@ def _fiche_md(lst, items):
         meta = " · ".join(filter(None, [b["author"], b["platform"]]))
         if meta:
             lines.append(f"*{meta}*")
+        ent = {}
+        if "entities" in b.keys() and b["entities"]:
+            try:
+                ent = json.loads(b["entities"])
+            except (ValueError, TypeError):
+                ent = {}
+        if ent.get("resume"):
+            lines += ["", ent["resume"]]
+        for label, key in (("Marques", "marques"), ("Produits", "produits"),
+                           ("Lieux", "lieux"), ("Livres", "livres")):
+            vals = [v for v in ent.get(key, []) if v]
+            if vals:
+                lines.append(f"- **{label}** : {', '.join(vals)}")
         cap = (b["caption"] or "").strip().replace("\r", " ")
         if cap:
             lines += ["", cap[:600]]
