@@ -54,8 +54,10 @@ def sync_saved(conn, verbose=True):
                     print(f"  + saved: {url}")
             else:
                 known_streak += 1
-                if known_streak >= stop_after_known:
-                    break  # on a rejoint le deja-connu
+                # arret anticipe (mode incremental). SAVED_STOP_AFTER_KNOWN=0 =
+                # mode "vidage du back-catalogue" : on saute le deja-connu sans s'arreter.
+                if stop_after_known and known_streak >= stop_after_known:
+                    break
             if added >= max_new:
                 break
             time.sleep(pause)  # pacing pour limiter la detection
