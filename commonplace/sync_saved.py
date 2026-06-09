@@ -18,6 +18,38 @@ import time
 from . import config, db
 
 
+def login_with_sessionid(sessionid, verbose=True):
+    """Cree la session instaloader a partir du cookie 'sessionid' du navigateur.
+
+    Contourne le login par mot de passe (casse par Instagram) et reutilise ta
+    vraie session connectee. Recupere sessionid via : navigateur -> instagram.com
+    connecte -> Inspecter -> Application/Stockage -> Cookies -> sessionid.
+    """
+    try:
+        import instaloader
+    except ImportError:
+        print("  instaloader manquant : pip3 install --user --break-system-packages instaloader")
+        return False
+    user = config.get("IG_USERNAME", "")
+    if not user:
+        print("  IG_USERNAME manquant dans .env")
+        return False
+    L = instaloader.Instaloader(quiet=True)
+    L.load_session(user, {"sessionid": sessionid.strip()})
+    try:
+        who = L.test_login()
+    except Exception as e:
+        who = None
+        if verbose:
+            print(f"  test_login a echoue : {e}")
+    if who:
+        L.save_session_to_file()
+        print(f"  session enregistree pour {who} ✓")
+        return True
+    print("  echec : le sessionid est invalide ou expire. Recopie-le bien depuis le navigateur connecte.")
+    return False
+
+
 def sync_saved(conn, verbose=True):
     try:
         import instaloader
