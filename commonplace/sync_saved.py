@@ -18,12 +18,13 @@ import time
 from . import config, db
 
 
-def login_with_sessionid(sessionid, verbose=True):
-    """Cree la session instaloader a partir du cookie 'sessionid' du navigateur.
+def login_with_sessionid(sessionid, csrftoken="", ds_user_id="", verbose=True):
+    """Cree la session instaloader a partir des cookies du navigateur.
 
     Contourne le login par mot de passe (casse par Instagram) et reutilise ta
-    vraie session connectee. Recupere sessionid via : navigateur -> instagram.com
-    connecte -> Inspecter -> Application/Stockage -> Cookies -> sessionid.
+    vraie session connectee. Instagram exige sessionid ET csrftoken. Recupere-les
+    via : navigateur -> instagram.com connecte -> Inspecter -> Application ->
+    Cookies -> lignes sessionid et csrftoken.
     """
     try:
         import instaloader
@@ -34,8 +35,14 @@ def login_with_sessionid(sessionid, verbose=True):
     if not user:
         print("  IG_USERNAME manquant dans .env")
         return False
+    if not csrftoken.strip():
+        print("  Il manque le csrftoken (Instagram l'exige). Relance et colle aussi le csrftoken.")
+        return False
+    cookies = {"sessionid": sessionid.strip(), "csrftoken": csrftoken.strip()}
+    if ds_user_id.strip():
+        cookies["ds_user_id"] = ds_user_id.strip()
     L = instaloader.Instaloader(quiet=True)
-    L.load_session(user, {"sessionid": sessionid.strip()})
+    L.load_session(user, cookies)
     try:
         who = L.test_login()
     except Exception as e:

@@ -115,8 +115,9 @@ def main():
         step_enrich(conn)
     elif arg in ("ig-login", "ig_login"):
         import getpass
-        sid = sys.argv[2] if len(sys.argv) > 2 else getpass.getpass("Colle ton sessionid Instagram : ")
-        sync_saved.login_with_sessionid(sid)
+        sid = getpass.getpass("sessionid (saisie invisible, colle puis Entree) : ")
+        csrf = getpass.getpass("csrftoken (saisie invisible, colle puis Entree) : ")
+        sync_saved.login_with_sessionid(sid, csrf)
     elif arg in ("sync-saved", "sync_saved"):
         n = sync_saved.sync_saved(conn)
         print(f"Insta enregistres : {n} nouveau(x) lien(s) ajoute(s)")
