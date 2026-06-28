@@ -57,6 +57,32 @@ def login_with_sessionid(sessionid, csrftoken="", ds_user_id="", verbose=True):
     return False
 
 
+def maybe_sync(conn, verbose=True):
+    """Version bridee pour le pipeline 15 min : ne lance sync_saved que si
+    IG_USERNAME est defini ET si le dernier passage date de plus de
+    SAVED_EVERY_HOURS (defaut 8h). SAVED_EVERY_HOURS=0 desactive la synchro
+    auto. Le timestamp est mis a jour meme en cas d'echec, pour ne pas marteler
+    Instagram toutes les 15 min sur une session morte.
+    """
+    if not config.get("IG_USERNAME", ""):
+        return 0
+    hours = float(config.get("SAVED_EVERY_HOURS", "8"))
+    if hours <= 0:
+        return 0  # synchro auto desactivee
+    stamp = config.DATA / ".last_saved_sync"
+    try:
+        if stamp.exists() and (time.time() - stamp.stat().st_mtime) < hours * 3600:
+            return 0  # trop tot, on attend
+    except OSError:
+        pass
+    n = sync_saved(conn, verbose=verbose)
+    try:
+        stamp.write_text(str(time.time()))
+    except OSError:
+        pass
+    return n
+
+
 def sync_saved(conn, verbose=True):
     try:
         import instaloader

@@ -28,6 +28,10 @@ def step_ingest(conn):
         n += youtube_ingest.ingest(conn)
     except Exception as e:
         print(f"  ! YouTube: {e}")
+    try:
+        n += sync_saved.maybe_sync(conn)  # Insta enregistres, bride a ~8h
+    except Exception as e:
+        print(f"  ! Insta saved: {e}")
     print(f"Capture : {n} nouveau(x) lien(s)")
     return n
 
