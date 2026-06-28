@@ -8,8 +8,41 @@ plateforme, recherche) en JS cote client. Videos locales jouees via <video>.
 """
 import html
 import hashlib
+import struct
 from datetime import datetime
 from . import config, db
+
+
+def _media_size(path):
+    """Dimensions (w, h) d'un JPEG/PNG en pur stdlib, ou None. Sert a reserver
+    le ratio de chaque vignette dans la galerie pour eviter que la mise en page
+    saute pendant que les images se chargent."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(2)
+            if head == b"\xff\xd8":  # JPEG
+                while True:
+                    b = f.read(1)
+                    while b and b != b"\xff":
+                        b = f.read(1)
+                    while b == b"\xff":
+                        b = f.read(1)
+                    if not b:
+                        return None
+                    marker = b[0]
+                    if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+                        f.read(3)
+                        h, w = struct.unpack(">HH", f.read(4))
+                        return w, h
+                    seg = struct.unpack(">H", f.read(2))[0]
+                    f.seek(seg - 2, 1)
+            if head == b"\x89P":  # PNG
+                f.seek(16)
+                w, h = struct.unpack(">II", f.read(8))
+                return w, h
+    except (OSError, struct.error):
+        return None
+    return None
 
 # petits logos inline (monochromes, prennent currentColor)
 PLATFORM_SVG = {
@@ -56,12 +89,19 @@ def _card(b, slug_by_bid):
     lists = " ".join(slug_by_bid.get(b["id"], [])) or "__unsorted__"
     blob = html.escape(" ".join(filter(None, [b["title"], b["author"], b["caption"], plat])).lower())
 
+    # ratio reserve pour eviter le reflow pendant le chargement des vignettes
+    ar = ""
+    if b["thumb_path"]:
+        sz = _media_size(config.DATA / b["thumb_path"])
+        if sz:
+            ar = f' style="aspect-ratio:{sz[0]}/{sz[1]}"'
+
     if video:
         poster = f'poster="{html.escape(thumb)}"' if thumb else ""
-        media = f'<div class="media"><video controls preload="none" {poster} src="{html.escape(video)}"></video></div>'
+        media = f'<div class="media"{ar}><video controls preload="none" {poster} src="{html.escape(video)}"></video></div>'
     elif thumb:
         # pas de video locale (youtube / tweet) : miniature cliquable vers l'original
-        media = (f'<a class="media media-link" href="{url}" target="_blank" rel="noopener">'
+        media = (f'<a class="media media-link"{ar} href="{url}" target="_blank" rel="noopener">'
                  f'<img loading="lazy" src="{html.escape(thumb)}" alt="">'
                  f'<span class="play">▶</span></a>')
     else:
@@ -220,8 +260,8 @@ main{min-width:0;padding:0 0 5rem}
   border:1px solid var(--line);border-radius:var(--radius);margin:0 0 1.3rem;overflow:hidden;
   box-shadow:var(--shadow);transition:transform .22s cubic-bezier(.2,.7,.2,1),box-shadow .22s}
 .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-h)}
-.media{order:-1;background:var(--green-d);line-height:0;position:relative;display:block}
-.media video,.media img{width:100%;height:auto;display:block;max-height:560px;object-fit:cover}
+.media{order:-1;background:var(--green-d);line-height:0;position:relative;display:block;aspect-ratio:4/5}
+.media video,.media img{width:100%;height:100%;display:block;object-fit:cover}
 .media-link .play{position:absolute;inset:0;margin:auto;width:56px;height:56px;
   display:flex;align-items:center;justify-content:center;border-radius:99px;
   background:rgba(33,59,28,.6);backdrop-filter:blur(2px);color:#fff;font-size:1.3rem;padding-left:4px;transition:.18s}
@@ -331,7 +371,7 @@ askIn&&askIn.addEventListener("keydown",e=>{if(e.key==="Enter")doAsk();});
 // --- notes : sauvegarde auto + champ qui grandit ---
 function grow(t){t.style.height="auto";t.style.height=Math.min(t.scrollHeight,160)+"px";}
 document.querySelectorAll("textarea.note").forEach(t=>{
-  grow(t);
+  if(t.value.trim())grow(t);  // ne force le reflow que pour les notes remplies
   t.addEventListener("input",()=>grow(t));
   t.addEventListener("change",()=>{
     const b=new URLSearchParams();b.set("id",t.dataset.id);b.set("text",t.value);

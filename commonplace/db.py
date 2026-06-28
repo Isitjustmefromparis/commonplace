@@ -103,13 +103,19 @@ def detect_platform(url):
     return "autre"
 
 
-def add_bookmark(conn, url, source, author=None, caption=None):
-    """Insere un lien s'il n'existe pas deja. Renvoie l'id ou None si doublon."""
+def add_bookmark(conn, url, source, author=None, caption=None, captured_at=None, title=None):
+    """Insere un lien s'il n'existe pas deja. Renvoie l'id ou None si doublon.
+
+    captured_at : date utilisee pour le tri de la galerie (sinon maintenant).
+    Permet aux imports en lot (playlist YouTube) de garder la vraie date
+    d'ajout au lieu de la date d'import, qui faisait remonter de vieilles
+    videos en haut.
+    """
     try:
         cur = conn.execute(
             "INSERT INTO bookmarks(url, platform, source, author, caption, "
-            "captured_at, status) VALUES(?,?,?,?,?,?, 'new')",
-            (url, detect_platform(url), source, author, caption, now()),
+            "title, captured_at, status) VALUES(?,?,?,?,?,?,?, 'new')",
+            (url, detect_platform(url), source, author, caption, title, captured_at or now()),
         )
         conn.commit()
         return cur.lastrowid

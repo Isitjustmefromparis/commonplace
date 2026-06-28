@@ -43,6 +43,8 @@ def ingest(conn, verbose=True):
                 conn, url, source="youtube",
                 author=sn.get("videoOwnerChannelTitle") or sn.get("channelTitle"),
                 caption=sn.get("description"),
+                title=sn.get("title"),
+                captured_at=sn.get("publishedAt"),  # vraie date d'ajout a la playlist
             )
             if bid:
                 added += 1
@@ -52,3 +54,44 @@ def ingest(conn, verbose=True):
         if not page_token:
             break
     return added
+
+
+def backfill_dates(conn, verbose=True):
+    """Re-date les videos YouTube deja en base avec leur vraie date d'ajout a
+    la playlist (snippet.publishedAt), au lieu de la date d'import en lot qui
+    les faisait remonter en haut de la galerie. A lancer une seule fois.
+    """
+    if not config.YOUTUBE_API_KEY or not config.YOUTUBE_PLAYLIST_ID:
+        return 0
+    updated = 0
+    page_token = None
+    while True:
+        params = {
+            "part": "snippet",
+            "playlistId": config.YOUTUBE_PLAYLIST_ID,
+            "maxResults": 50,
+            "key": config.YOUTUBE_API_KEY,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        data = _get(params)
+        for item in data.get("items", []):
+            sn = item["snippet"]
+            vid = sn["resourceId"].get("videoId")
+            pub = sn.get("publishedAt")
+            if not vid or not pub:
+                continue
+            url = f"https://www.youtube.com/watch?v={vid}"
+            cur = conn.execute(
+                "UPDATE bookmarks SET captured_at=?, "
+                "title=COALESCE(NULLIF(title,''), ?) WHERE url=?",
+                (pub, sn.get("title"), url),
+            )
+            updated += cur.rowcount
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+    conn.commit()
+    if verbose:
+        print(f"  YouTube : {updated} video(s) re-datee(s)")
+    return updated

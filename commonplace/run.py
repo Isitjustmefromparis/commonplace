@@ -121,6 +121,9 @@ def main():
     elif arg in ("sync-saved", "sync_saved"):
         n = sync_saved.sync_saved(conn)
         print(f"Insta enregistres : {n} nouveau(x) lien(s) ajoute(s)")
+    elif arg in ("yt-backfill", "youtube-backfill"):
+        n = youtube_ingest.backfill_dates(conn)
+        print(f"Re-datage YouTube : {n} video(s) mise(s) a jour")
     elif arg == "whoami":
         for cid, name in telegram_ingest.whoami(conn).items():
             print(f"chat_id={cid}  ({name})")
